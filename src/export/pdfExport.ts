@@ -6,9 +6,6 @@ export interface PDFExportOptions {
   pageSize?: "a4" | "letter";
 }
 
-// A4 in mm
-const PAGE_W_MM = 210;
-const PAGE_H_MM = 297;
 
 /**
  * Find natural page-break positions by scanning block-level children.
@@ -103,8 +100,6 @@ export async function renderToPdfBlob(
 
   // Scale: how many canvas pixels = 1mm
   const pxPerMm = canvas.width / pageWMm;
-  const pageHPx = pageHMm * pxPerMm;
-
   const totalHeightPx = canvas.height;
 
   // Find natural break positions in the source element (in px, unscaled)
