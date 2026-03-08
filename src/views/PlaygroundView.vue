@@ -130,6 +130,8 @@ import Select from "primevue/select";
 import { useTemplateStore } from "../stores/templateStore";
 import { compile } from "../compiler/handlebarsCompiler";
 import type { DocTemplate } from "../types/blocks";
+import { exportToPDF } from "../export/pdfExport";
+import { exportToWord } from "../export/wordExport";
 import "../assets/styles/document.css";
 
 const route = useRoute();
@@ -249,26 +251,20 @@ function doCompile() {
 watch([jsonData, selectedTemplate], () => runCompile(), { deep: true });
 
 function handleExportPdf() {
-  if (!previewContainer.value) {
-    console.log("[Export PDF] Preview container not found");
+  const el = previewContainer.value;
+  if (!el) {
+    console.warn("[Export PDF] Preview container not found");
     return;
   }
-  // Stub: export not yet implemented (Task 11)
-  console.log("[Export PDF] Stub called - export not yet implemented", {
-    hasPreview: !!previewHtml.value,
-    element: previewContainer.value,
-  });
+  exportToPDF(el, "document.pdf");
 }
 
 function handleExportWord() {
   if (!previewHtml.value) {
-    console.log("[Export Word] No preview content");
+    console.warn("[Export Word] No preview content");
     return;
   }
-  // Stub: export not yet implemented (Task 11)
-  console.log("[Export Word] Stub called - export not yet implemented", {
-    htmlLength: previewHtml.value.length,
-  });
+  exportToWord(previewHtml.value, "document.docx");
 }
 
 onMounted(async () => {
