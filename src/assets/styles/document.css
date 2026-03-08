@@ -1,14 +1,36 @@
 /* Document preview styles for finance documents */
 
+/* A4 page dimensions for preview container */
 .doc-preview-page {
   box-sizing: border-box;
-  max-width: 210mm;
+  width: 210mm;
+  min-height: 297mm;
   margin: 0 auto;
   padding: 20mm;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: #1a1a1a;
+  background: #fff;
+}
+
+/* Typography: heading sizes */
+.doc-preview-page h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+
+.doc-preview-page h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.doc-preview-page h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
 }
 
 .document-header {
@@ -57,11 +79,13 @@
   color: #666;
 }
 
+/* Address cards: subtle borders/backgrounds */
 .address-block,
 .address-left,
 .address-right {
   padding: 0.75rem;
   background: #f8f9fa;
+  border: 1px solid #e9ecef;
   border-radius: 4px;
 }
 
@@ -147,6 +171,7 @@
   font-weight: 500;
 }
 
+/* Table styles: borders, zebra stripes, right-aligned amounts */
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -179,8 +204,10 @@
 
 .data-table .align-right {
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Summary table: grand-total bold + border-top */
 .summary-table {
   margin-bottom: 1rem;
 }
@@ -200,7 +227,10 @@
 .summary-item.style-grand-total {
   font-weight: 700;
   font-size: 1.1rem;
-  border-bottom: 2px solid #333;
+  border-top: 2px solid #333;
+  border-bottom: none;
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .summary-item.style-subtotal {
@@ -209,6 +239,10 @@
 
 .summary-label {
   margin-right: 1rem;
+}
+
+.summary-value {
+  font-variant-numeric: tabular-nums;
 }
 
 .text-block {
@@ -278,11 +312,14 @@
   min-width: 120px;
 }
 
+/* Signature lines: bottom borders */
 .signature-line {
+  border: none;
   border-bottom: 1px solid #333;
   width: 120px;
   height: 24px;
   margin-bottom: 0.5rem;
+  background: transparent;
 }
 
 .signatory-name {
@@ -376,4 +413,21 @@
 
 .footer-right {
   text-align: right;
+}
+
+/* Print: hide non-document chrome (toolbars, sidebars, buttons) */
+@media print {
+  .palette-panel,
+  .properties-panel,
+  .block-drag-handle,
+  [role="toolbar"],
+  button {
+    display: none !important;
+  }
+
+  .doc-preview-page {
+    box-shadow: none;
+    width: 100% !important;
+    max-width: none;
+  }
 }

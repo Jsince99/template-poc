@@ -86,6 +86,12 @@ async function saveTemplate() {
       name: template.value.name,
     });
     saveStatus.value = "saved";
+    toast.add({
+      severity: "success",
+      summary: "Saved",
+      detail: "Template saved successfully",
+      life: 2000,
+    });
     setTimeout(() => (saveStatus.value = "idle"), 2000);
   } catch {
     toast.add({
@@ -181,22 +187,24 @@ watch(
 
     <!-- Three-panel layout -->
     <div class="builder-content flex-1 min-h-0 flex">
-      <!-- Left: Block palette (250px) -->
+      <!-- Left: Block palette (narrower on small screens) -->
       <div
-        class="palette-panel w-[250px] shrink-0 border-r border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-950 overflow-hidden flex flex-col"
+        class="palette-panel w-[250px] md:w-[220px] shrink-0 border-r border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-950 overflow-hidden flex flex-col"
       >
         <BlockPalette />
       </div>
 
       <!-- Center: Canvas (flex) -->
-      <div class="canvas-panel flex-1 min-w-0 overflow-auto p-4 bg-surface-100 dark:bg-surface-900">
+      <div class="canvas-panel flex-1 min-w-0 overflow-auto p-2 md:p-4 bg-surface-100 dark:bg-surface-900">
         <div class="canvas-inner max-w-3xl mx-auto">
-          <div class="canvas-paper bg-white dark:bg-surface-800 rounded-lg shadow-sm p-8 min-h-[400px]">
+          <div class="canvas-paper bg-white dark:bg-surface-800 rounded-lg shadow-sm p-4 md:p-8 min-h-[400px]">
             <draggable
               v-model="template.blocks"
               group="blocks"
               item-key="id"
               handle=".block-drag-handle"
+              ghost-class="builder-ghost"
+              chosen-class="builder-chosen"
               tag="div"
               class="flex flex-col gap-2"
               @change="scheduleAutoSave"
@@ -218,15 +226,15 @@ watch(
               class="flex flex-col items-center justify-center py-16 text-surface-400 dark:text-surface-500 border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-lg"
             >
               <i class="pi pi-inbox text-4xl mb-2"></i>
-              <p class="text-sm m-0">Drag blocks here from the palette</p>
+              <p class="text-sm m-0">Drag blocks here to start building</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right: Properties (320px) -->
+      <!-- Right: Properties (hidden on small screens, 320px on md+) -->
       <div
-        class="properties-panel w-[320px] shrink-0 border-l border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 overflow-hidden flex flex-col"
+        class="properties-panel w-[280px] md:w-[320px] shrink-0 border-l border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 overflow-hidden hidden sm:flex sm:flex-col"
       >
         <div class="p-4 border-b border-surface-200 dark:border-surface-700">
           <h3 class="text-sm font-semibold text-surface-700 dark:text-surface-300 m-0">
@@ -262,3 +270,15 @@ watch(
     </div>
   </div>
 </template>
+
+<style>
+/* Drag ghost: semi-transparent, type label visible (applied by Sortable) */
+.builder-ghost {
+  opacity: 0.5;
+}
+
+.builder-chosen {
+  opacity: 0.85;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+</style>

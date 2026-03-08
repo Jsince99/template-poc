@@ -43,11 +43,14 @@ function onSelect(e: Event) {
 
 <template>
   <div
-    class="builder-block rounded-lg border-2 transition-colors"
+    class="builder-block rounded-lg transition-all duration-150"
     :class="[
       isSelected
-        ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30'
-        : 'border-transparent hover:border-surface-300 dark:hover:border-surface-600',
+        ? 'builder-block--selected'
+        : 'builder-block--unselected',
+      isContainer && 'builder-block--container',
+      block.type === 'conditional' && 'builder-block--conditional',
+      block.type === 'loop' && 'builder-block--loop',
     ]"
     @click="onSelect"
   >
@@ -61,6 +64,19 @@ function onSelect(e: Event) {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
           <span
+            v-if="block.type === 'conditional'"
+            class="builder-block__badge builder-block__badge--if"
+          >
+            IF
+          </span>
+          <span
+            v-else-if="block.type === 'loop'"
+            class="builder-block__badge builder-block__badge--each"
+          >
+            EACH
+          </span>
+          <span
+            v-else
             class="text-xs font-medium px-2 py-0.5 rounded bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400"
           >
             {{ block.type }}
@@ -76,13 +92,15 @@ function onSelect(e: Event) {
         <!-- Nested container children -->
         <div
           v-if="isContainer && containerBlock"
-          class="container-children mt-2 pl-4 border-l-2 border-surface-200 dark:border-surface-700 relative"
+          class="container-children mt-2 pl-4 border-l-2 border-dashed border-surface-300 dark:border-surface-600 relative"
         >
           <draggable
             v-model="children"
             group="blocks"
             item-key="id"
             handle=".block-drag-handle"
+            ghost-class="builder-ghost"
+            chosen-class="builder-chosen"
             tag="div"
             class="flex flex-col gap-2 min-h-[48px]"
             @change="emit('change')"
@@ -110,3 +128,65 @@ function onSelect(e: Event) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.builder-block--unselected {
+  border: 2px solid transparent;
+}
+
+.builder-block--unselected:hover {
+  border-color: var(--p-border-color);
+}
+
+.builder-block--selected {
+  border-left: 3px solid #3b82f6;
+  border-top: 2px solid transparent;
+  border-right: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+.dark .builder-block--selected {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+.builder-block--container.builder-block--unselected {
+  border: 2px dashed var(--p-border-color);
+}
+
+.builder-block--conditional.builder-block--unselected {
+  border-color: #3b82f6;
+}
+
+.builder-block--loop.builder-block--unselected {
+  border-color: #22c55e;
+}
+
+.builder-block__badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.builder-block__badge--if {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.dark .builder-block__badge--if {
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+.builder-block__badge--each {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dark .builder-block__badge--each {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+</style>
