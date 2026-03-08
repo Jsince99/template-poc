@@ -19,8 +19,9 @@ import LoopRenderer from "./LoopRenderer.vue";
 
 const props = defineProps<{
   block: Block;
-  data: Record<string, unknown>;
-}>();
+  /** Pass null to render raw template strings (builder preview mode) */
+  data: Record<string, unknown> | null;
+}>(); 
 
 defineEmits<{
   select: [block: Block];
@@ -45,14 +46,47 @@ const rendererMap: Record<string, object> = {
 };
 
 const rendererComponent = computed(() => rendererMap[props.block.type] ?? null);
+
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce((cur: unknown, key) => (cur as Record<string, unknown>)?.[key], obj);
+}
+
+const isVisible = computed(() => {
+  const cond = props.block.visibilityCondition;
+  if (!cond || props.data === null) return true;
+  const path = cond.replace(/^\{\{\s*/, "").replace(/\s*\}\}$/, "").trim();
+  return !!getNestedValue(props.data, path);
+});
+
+const marginMap: Record<string, string> = {
+  none: "0",
+  sm: "0.5rem",
+  md: "1rem",
+  lg: "1.5rem",
+};
+
+const blockStyle = computed(() => {
+  const s = props.block.style;
+  if (!s) return {};
+  return {
+    marginTop: s.marginTop ? marginMap[s.marginTop] : undefined,
+    marginBottom: s.marginBottom ? marginMap[s.marginBottom] : undefined,
+    backgroundColor: s.backgroundColor || undefined,
+  };
+});
 </script>
 
 <template>
-  <component
-    v-if="rendererComponent"
-    :is="rendererComponent"
-    :block="block"
-    :data="data ?? {}"
-    @select="$emit('select', $event)"
-  />
+  <div
+    v-if="rendererComponent && isVisible"
+    :style="blockStyle"
+    :class="block.cssClass"
+  >
+    <component
+      :is="rendererComponent"
+      :block="block"
+      :data="data"
+      @select="$emit('select', $event)"
+    />
+  </div>
 </template>

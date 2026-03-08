@@ -5,7 +5,7 @@ import { compileProp } from "./compileProp";
 
 const props = defineProps<{
   block: KeyValueGridBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const items = computed(() =>

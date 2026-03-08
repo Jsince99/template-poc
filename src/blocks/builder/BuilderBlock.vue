@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import draggable from "vuedraggable";
+import { Sortable } from "sortablejs-vue3";
+import type { SortableEvent } from "sortablejs";
+import Button from "primevue/button";
 import BlockRenderer from "../renderers/BlockRenderer.vue";
 import { isContainerBlock } from "../../types/blocks";
 import type { Block, ContainerBlock } from "../../types/blocks";
+import { pendingClone } from "../../composables/useDragState";
 
 const props = defineProps<{
   block: Block;
   templateBlocks: Block[];
-  sampleData: Record<string, unknown>;
+  sampleData: Record<string, unknown> | null;
   selectedId: string | null;
 }>();
 
 const emit = defineEmits<{
   select: [block: Block];
   "update:block": [block: Block];
+  remove: [id: string];
   change: [];
 }>();
 
@@ -25,19 +29,56 @@ const containerBlock = computed(() =>
   isContainer.value ? (props.block as ContainerBlock) : null
 );
 
-const children = computed({
-  get: () => containerBlock.value?.children ?? [],
-  set: (val) => {
-    if (containerBlock.value) {
-      (containerBlock.value as ContainerBlock).children = val;
-      emit("change");
-    }
-  },
-});
+const children = computed(() => containerBlock.value?.children ?? []);
+
+const containerOptions = {
+  group: "blocks",
+  handle: ".block-drag-handle",
+  animation: 150,
+  ghostClass: "builder-ghost",
+  chosenClass: "builder-chosen",
+};
+
+function onChildAdd(evt: SortableEvent) {
+  const cb = containerBlock.value;
+  if (!cb) return;
+  evt.item.parentNode?.removeChild(evt.item);
+  const block = pendingClone.value;
+  pendingClone.value = null;
+  if (!block) return;
+  const idx = evt.newIndex ?? cb.children.length;
+  cb.children.splice(idx, 0, block);
+  emit("change");
+}
+
+function onChildUpdate(evt: SortableEvent) {
+  const cb = containerBlock.value;
+  if (!cb) return;
+  const { oldIndex, newIndex } = evt;
+  if (oldIndex == null || newIndex == null || oldIndex === newIndex) return;
+  const [moved] = cb.children.splice(oldIndex, 1);
+  cb.children.splice(newIndex, 0, moved);
+  emit("change");
+}
 
 function onSelect(e: Event) {
   e.stopPropagation();
   emit("select", props.block);
+}
+
+function onRemove(e: Event) {
+  e.stopPropagation();
+  emit("remove", props.block.id);
+}
+
+function onChildRemove(id: string) {
+  const cb = containerBlock.value;
+  if (!cb) return;
+  const idx = cb.children.findIndex((c) => c.id === id);
+  if (idx !== -1) {
+    cb.children.splice(idx, 1);
+    emit("change");
+  }
 }
 </script>
 
@@ -81,6 +122,16 @@ function onSelect(e: Event) {
           >
             {{ block.type }}
           </span>
+          <Button
+            icon="pi pi-trash"
+            severity="danger"
+            text
+            rounded
+            size="small"
+            class="ml-auto shrink-0 !p-1"
+            aria-label="Remove block"
+            @click="onRemove"
+          />
         </div>
         <div class="block-preview">
           <BlockRenderer
@@ -94,16 +145,14 @@ function onSelect(e: Event) {
           v-if="isContainer && containerBlock"
           class="container-children mt-2 pl-4 border-l-2 border-dashed border-surface-300 dark:border-surface-600 relative"
         >
-          <draggable
-            v-model="children"
-            group="blocks"
+          <Sortable
+            :list="children"
             item-key="id"
-            handle=".block-drag-handle"
-            ghost-class="builder-ghost"
-            chosen-class="builder-chosen"
             tag="div"
+            :options="containerOptions"
             class="flex flex-col gap-2 min-h-[48px]"
-            @change="emit('change')"
+            @add="onChildAdd"
+            @update="onChildUpdate"
           >
             <template #item="{ element: childBlock }">
               <BuilderBlock
@@ -113,10 +162,11 @@ function onSelect(e: Event) {
                 :selected-id="selectedId"
                 @select="emit('select', $event)"
                 @update:block="emit('update:block', $event)"
+                @remove="onChildRemove"
                 @change="emit('change')"
               />
             </template>
-          </draggable>
+          </Sortable>
           <div
             v-if="children.length === 0"
             class="absolute inset-0 flex items-center justify-center py-4 text-surface-400 dark:text-surface-500 text-sm border-2 border-dashed border-surface-200 dark:border-surface-700 rounded pointer-events-none"

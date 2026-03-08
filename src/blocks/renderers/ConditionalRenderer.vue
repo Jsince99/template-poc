@@ -5,7 +5,7 @@ import BlockRenderer from "./BlockRenderer.vue";
 
 const props = defineProps<{
   block: ConditionalBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 defineEmits<{ select: [block: import("../../types/blocks").Block] }>();
@@ -20,6 +20,8 @@ function getNestedValue(obj: unknown, path: string): unknown {
 }
 
 const shouldRender = computed(() => {
+  // In builder preview mode (data === null), always show children
+  if (props.data === null) return true;
   const { expression, operator, compareValue } = props.block.props;
   const val = getNestedValue(props.data, expression);
 

@@ -42,7 +42,15 @@ Handlebars.registerHelper("formatNumber", (value: unknown) => {
 // --- Block to HTML conversion ---
 
 function wrapSection(html: string, block: Block): string {
-  return `<section data-block-type="${block.type}" data-block-id="${block.id}">${html}</section>`;
+  const inner = `<section data-block-type="${block.type}" data-block-id="${block.id}">${html}</section>`;
+  if (block.visibilityCondition) {
+    const path = block.visibilityCondition
+      .replace(/^\{\{\s*/, "")
+      .replace(/\s*\}\}$/, "")
+      .trim();
+    return `{{#if ${path}}}\n${inner}\n{{/if}}`;
+  }
+  return inner;
 }
 
 /** Extract Handlebars path from "{{path}}" or return as-is */

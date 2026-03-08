@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import draggable from "vuedraggable";
+import { Sortable } from "sortablejs-vue3";
+import type { SortableEvent } from "sortablejs";
 import { blockRegistry, createBlock } from "../../registry/blockRegistry";
-import type { Block } from "../../types/blocks";
+import { pendingClone } from "../../composables/useDragState";
 
 const contentBlocks = computed(() =>
   blockRegistry.filter((b) => b.category === "content")
@@ -11,16 +12,21 @@ const logicBlocks = computed(() =>
   blockRegistry.filter((b) => b.category === "logic")
 );
 
-// Palette items are descriptors; clone creates real blocks when dropped
-function cloneBlock(item: { type: string }): Block {
-  return createBlock(item.type);
-}
-
-const groupConfig = {
-  name: "blocks",
-  pull: "clone" as const,
-  put: false,
+const paletteOptions = {
+  group: { name: "blocks", pull: "clone", put: false },
+  sort: false,
+  animation: 150,
+  ghostClass: "palette-ghost",
+  chosenClass: "palette-chosen",
 };
+
+function onClone(evt: SortableEvent) {
+  // item is the original palette element; its data-block-type tells us what to create
+  const type = (evt.item as HTMLElement).dataset.blockType;
+  if (type) {
+    pendingClone.value = createBlock(type);
+  }
+}
 </script>
 
 <template>
@@ -34,20 +40,18 @@ const groupConfig = {
       <span class="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">
         Content
       </span>
-      <draggable
+      <Sortable
         :list="contentBlocks"
-        :group="groupConfig"
-        :clone="cloneBlock"
-        :sort="false"
         item-key="type"
-        ghost-class="palette-ghost"
-        chosen-class="palette-chosen"
         tag="div"
+        :options="paletteOptions"
         class="flex flex-col gap-1"
+        @clone="onClone"
       >
         <template #item="{ element }">
           <div
             class="palette-item flex items-center gap-2 px-3 py-2 rounded border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 cursor-grab active:cursor-grabbing hover:border-primary-500 transition-colors"
+            :data-block-type="element.type"
             v-tooltip.top="element.description"
           >
             <i :class="element.icon" class="pi text-surface-500 shrink-0"></i>
@@ -56,7 +60,7 @@ const groupConfig = {
             </span>
           </div>
         </template>
-      </draggable>
+      </Sortable>
     </div>
 
     <!-- Logic blocks -->
@@ -64,20 +68,18 @@ const groupConfig = {
       <span class="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">
         Logic
       </span>
-      <draggable
+      <Sortable
         :list="logicBlocks"
-        :group="groupConfig"
-        :clone="cloneBlock"
-        :sort="false"
         item-key="type"
-        ghost-class="palette-ghost"
-        chosen-class="palette-chosen"
         tag="div"
+        :options="paletteOptions"
         class="flex flex-col gap-1"
+        @clone="onClone"
       >
         <template #item="{ element }">
           <div
             class="palette-item flex items-center gap-2 px-3 py-2 rounded border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 cursor-grab active:cursor-grabbing hover:border-primary-500 transition-colors"
+            :data-block-type="element.type"
             v-tooltip.top="element.description"
           >
             <i :class="element.icon" class="pi text-surface-500 shrink-0"></i>
@@ -86,7 +88,7 @@ const groupConfig = {
             </span>
           </div>
         </template>
-      </draggable>
+      </Sortable>
     </div>
   </div>
 </template>
@@ -99,7 +101,6 @@ const groupConfig = {
 </style>
 
 <style>
-/* Palette drag ghost: semi-transparent, type label visible */
 .palette-ghost {
   opacity: 0.5;
 }

@@ -5,10 +5,11 @@ import type { DataTableBlock } from "../../types/blocks";
 
 const props = defineProps<{
   block: DataTableBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const rows = computed(() => {
+  if (props.data === null) return [];
   const eachPath = props.block.props.each;
   if (!eachPath) return [];
   const parts = eachPath.split(".");
@@ -36,6 +37,7 @@ const getCellValue = (row: unknown, field: string, format?: string) => {
 };
 
 const compiledHeader = (header: string) => {
+  if (props.data === null) return header;
   try {
     return Handlebars.compile(header, { noEscape: true })(props.data);
   } catch {

@@ -5,13 +5,14 @@ Handlebars.registerHelper("eq", (a: unknown, b: unknown) => a === b);
 
 /**
  * Compiles a Handlebars template string with the given data context.
- * Returns the rendered string. Safe for plain strings without {{}}.
+ * Pass null as data to return the raw template string (builder preview mode).
  */
 export function compileProp(
   prop: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown> | null
 ): string {
   if (!prop || typeof prop !== "string") return "";
+  if (data === null) return prop;
   try {
     const template = Handlebars.compile(prop, { noEscape: true });
     const result = template(data);

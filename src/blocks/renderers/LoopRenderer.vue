@@ -5,7 +5,7 @@ import BlockRenderer from "./BlockRenderer.vue";
 
 const props = defineProps<{
   block: LoopBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 defineEmits<{ select: [block: import("../../types/blocks").Block] }>();
@@ -19,7 +19,11 @@ function getNestedValue(obj: unknown, path: string): unknown {
   return current;
 }
 
+const PREVIEW_PLACEHOLDER = [{}];
+
 const items = computed(() => {
+  // In builder preview mode (data === null), show one placeholder row
+  if (props.data === null) return PREVIEW_PLACEHOLDER;
   const eachPath = props.block.props.each;
   if (!eachPath) return [];
   const val = getNestedValue(props.data, eachPath);
@@ -37,7 +41,7 @@ const indexAlias = computed(() => props.block.props.indexAlias ?? "@index");
         v-for="child in block.children"
         :key="`${child.id}-${index}`"
         :block="child"
-        :data="{ ...data, [itemAlias]: item, [indexAlias]: index }"
+        :data="data === null ? null : { ...data, [itemAlias]: item, [indexAlias]: index }"
         @select="(b) => $emit('select', b)"
       />
     </template>

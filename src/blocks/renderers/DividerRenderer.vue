@@ -3,7 +3,7 @@ import type { DividerBlock } from "../../types/blocks";
 
 defineProps<{
   block: DividerBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const marginMap = { sm: "0.5rem", md: "1rem", lg: "1.5rem" };

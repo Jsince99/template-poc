@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import "../assets/styles/document.css";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "primevue/usetoast";
-import draggable from "vuedraggable";
+import { Sortable } from "sortablejs-vue3";
+import type { SortableEvent } from "sortablejs";
+import { pendingClone } from "../composables/useDragState";
 import Button from "primevue/button";
 import InputText from "primevue/inputtext";
 import Toolbar from "primevue/toolbar";
@@ -23,6 +26,49 @@ const selectedBlock = ref<Block | null>(null);
 const saveStatus = ref<"idle" | "saving" | "saved">("idle");
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ── Undo / Redo history ───────────────────────────────────────────────────────
+const HISTORY_LIMIT = 50;
+const history = ref<Block[][]>([]);
+const historyIndex = ref(-1);
+
+const canUndo = computed(() => historyIndex.value > 0);
+const canRedo = computed(() => historyIndex.value < history.value.length - 1);
+
+function snapshotBlocks(): Block[] {
+  return JSON.parse(JSON.stringify(template.value?.blocks ?? [])) as Block[];
+}
+
+/** Call after every mutation that should be undoable. */
+function pushHistory() {
+  if (!template.value) return;
+  // Drop any redo states ahead of current cursor
+  history.value.splice(historyIndex.value + 1);
+  history.value.push(snapshotBlocks());
+  if (history.value.length > HISTORY_LIMIT) history.value.shift();
+  historyIndex.value = history.value.length - 1;
+}
+
+function undo() {
+  if (!canUndo.value || !template.value) return;
+  historyIndex.value--;
+  template.value.blocks = JSON.parse(JSON.stringify(history.value[historyIndex.value])) as Block[];
+  // Deselect if selected block no longer exists
+  if (selectedBlock.value && !findBlockById(template.value.blocks, selectedBlock.value.id)) {
+    selectedBlock.value = null;
+  }
+  scheduleAutoSave();
+}
+
+function redo() {
+  if (!canRedo.value || !template.value) return;
+  historyIndex.value++;
+  template.value.blocks = JSON.parse(JSON.stringify(history.value[historyIndex.value])) as Block[];
+  if (selectedBlock.value && !findBlockById(template.value.blocks, selectedBlock.value.id)) {
+    selectedBlock.value = null;
+  }
+  scheduleAutoSave();
+}
+
 const templateId = computed(() => route.params.id as string);
 
 async function loadTemplate() {
@@ -31,6 +77,9 @@ async function loadTemplate() {
   const t = await templateStore.getById(templateId.value);
   template.value = t ? structuredClone(t) : null;
   selectedBlock.value = null;
+  // Seed history with the initial state
+  history.value = template.value ? [snapshotBlocks()] : [];
+  historyIndex.value = history.value.length - 1;
 }
 
 function findBlockById(blocks: Block[], id: string): Block | null {
@@ -46,6 +95,17 @@ function findBlockById(blocks: Block[], id: string): Block | null {
 
 function selectBlock(block: Block) {
   selectedBlock.value = block;
+}
+
+function removeBlock(id: string) {
+  if (!template.value) return;
+  const idx = template.value.blocks.findIndex((b) => b.id === id);
+  if (idx !== -1) {
+    template.value.blocks.splice(idx, 1);
+    if (selectedBlock.value?.id === id) selectedBlock.value = null;
+    pushHistory();
+    scheduleAutoSave();
+  }
 }
 
 function updateSelectedBlock(updated: Block) {
@@ -65,6 +125,7 @@ function updateSelectedBlock(updated: Block) {
     return false;
   };
   updateIn(template.value.blocks);
+  pushHistory();
   scheduleAutoSave();
 }
 
@@ -112,13 +173,61 @@ function openInPlayground() {
   router.push({ path: "/playground", query: { template: templateId.value } });
 }
 
+const canvasOptions = {
+  group: "blocks",
+  handle: ".block-drag-handle",
+  animation: 150,
+  ghostClass: "builder-ghost",
+  chosenClass: "builder-chosen",
+};
+
+function onCanvasAdd(evt: SortableEvent) {
+  if (!template.value) return;
+  evt.item.parentNode?.removeChild(evt.item);
+  const block = pendingClone.value;
+  pendingClone.value = null;
+  if (!block) return;
+  const idx = evt.newIndex ?? template.value.blocks.length;
+  template.value.blocks.splice(idx, 0, block);
+  pushHistory();
+  scheduleAutoSave();
+}
+
+function onCanvasUpdate(evt: SortableEvent) {
+  if (!template.value) return;
+  const { oldIndex, newIndex } = evt;
+  if (oldIndex == null || newIndex == null || oldIndex === newIndex) return;
+  const blocks = template.value.blocks;
+  const [moved] = blocks.splice(oldIndex, 1);
+  blocks.splice(newIndex, 0, moved);
+  pushHistory();
+  scheduleAutoSave();
+}
+
 watch(
   () => route.params.id,
   () => loadTemplate(),
   { immediate: false }
 );
 
-onMounted(() => loadTemplate());
+function onKeyDown(e: KeyboardEvent) {
+  const meta = e.metaKey || e.ctrlKey;
+  if (!meta) return;
+  // Don't intercept shortcuts while typing in an input/textarea
+  const tag = (e.target as HTMLElement).tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
+  if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+  if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); redo(); }
+}
+
+onMounted(() => {
+  loadTemplate();
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
 
 // Sync selected block ref when template reloads (e.g. after save refreshes store)
 watch(
@@ -154,16 +263,37 @@ watch(
         />
       </template>
       <template #end>
+        <!-- Undo / Redo -->
+        <Button
+          v-tooltip.bottom="'Undo (⌘Z)'"
+          icon="pi pi-undo"
+          severity="secondary"
+          text
+          rounded
+          :disabled="!canUndo"
+          aria-label="Undo"
+          @click="undo"
+        />
+        <Button
+          v-tooltip.bottom="'Redo (⌘⇧Z)'"
+          icon="pi pi-refresh"
+          severity="secondary"
+          text
+          rounded
+          :disabled="!canRedo"
+          aria-label="Redo"
+          @click="redo"
+        />
         <span
           v-if="saveStatus === 'saving'"
-          class="text-sm text-surface-500 flex items-center gap-2"
+          class="text-sm text-surface-500 flex items-center gap-2 ml-2"
         >
           <i class="pi pi-spin pi-spinner"></i>
           Saving...
         </span>
         <span
           v-else-if="saveStatus === 'saved'"
-          class="text-sm text-green-600 dark:text-green-400 flex items-center gap-2"
+          class="text-sm text-green-600 dark:text-green-400 flex items-center gap-2 ml-2"
         >
           <i class="pi pi-check"></i>
           Saved
@@ -195,35 +325,36 @@ watch(
       </div>
 
       <!-- Center: Canvas (flex) -->
-      <div class="canvas-panel flex-1 min-w-0 overflow-auto p-2 md:p-4 bg-surface-100 dark:bg-surface-900">
-        <div class="canvas-inner max-w-3xl mx-auto">
-          <div class="canvas-paper bg-white dark:bg-surface-800 rounded-lg shadow-sm p-4 md:p-8 min-h-[400px]">
-            <draggable
-              v-model="template.blocks"
-              group="blocks"
+      <div class="canvas-panel flex-1 min-w-0 overflow-auto p-4 bg-surface-100 dark:bg-surface-900">
+        <!-- A4 width (210mm) so canvas matches PDF output -->
+        <div class="canvas-inner mx-auto" style="width: 210mm;">
+          <div class="canvas-paper bg-white rounded-lg shadow-sm min-h-[297mm] relative" style="padding: 20mm;">
+            <Sortable
+              :list="template.blocks"
               item-key="id"
-              handle=".block-drag-handle"
-              ghost-class="builder-ghost"
-              chosen-class="builder-chosen"
               tag="div"
-              class="flex flex-col gap-2"
-              @change="scheduleAutoSave"
+              :options="canvasOptions"
+              class="flex flex-col gap-2 min-h-[200px]"
+              @add="onCanvasAdd"
+              @update="onCanvasUpdate"
             >
               <template #item="{ element: block }">
                 <BuilderBlock
                   :block="block"
                   :template-blocks="template.blocks"
-                  :sample-data="template.sampleData ?? {}"
+                  :sample-data="null"
                   :selected-id="selectedBlock?.id ?? null"
                   @select="selectBlock"
                   @update:block="updateSelectedBlock"
-                  @change="scheduleAutoSave"
+                  @remove="removeBlock"
+                  @change="() => { pushHistory(); scheduleAutoSave(); }"
                 />
               </template>
-            </draggable>
+            </Sortable>
+            <!-- Empty state overlay: pointer-events-none so drops reach the sortable -->
             <div
               v-if="template.blocks.length === 0"
-              class="flex flex-col items-center justify-center py-16 text-surface-400 dark:text-surface-500 border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-lg"
+              class="absolute inset-0 flex flex-col items-center justify-center py-16 text-surface-400 dark:text-surface-500 border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-lg pointer-events-none"
             >
               <i class="pi pi-inbox text-4xl mb-2"></i>
               <p class="text-sm m-0">Drag blocks here to start building</p>

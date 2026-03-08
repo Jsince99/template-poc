@@ -5,12 +5,13 @@ import type { TextBlockBlock } from "../../types/blocks";
 
 const props = defineProps<{
   block: TextBlockBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const compiled = computed(() => {
   const content = props.block.props.content;
   if (!content) return "";
+  if (props.data === null) return content;
   try {
     const template = Handlebars.compile(content, { noEscape: true });
     return template(props.data);

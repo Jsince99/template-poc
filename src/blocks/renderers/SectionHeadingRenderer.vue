@@ -5,7 +5,7 @@ import { compileProp } from "./compileProp";
 
 const props = defineProps<{
   block: SectionHeadingBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const Tag = computed(() => `h${props.block.props.level ?? 2}`);

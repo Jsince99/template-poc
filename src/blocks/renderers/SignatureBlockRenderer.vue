@@ -5,7 +5,7 @@ import { compileProp } from "./compileProp";
 
 const props = defineProps<{
   block: SignatureBlockBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const signatories = computed(() =>

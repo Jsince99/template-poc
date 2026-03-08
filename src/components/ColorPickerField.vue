@@ -19,10 +19,15 @@ const emit = defineEmits<{
     >
       {{ label }}
     </label>
-    <ColorPicker
-      :model-value="modelValue"
-      format="hex"
-      @update:model-value="emit('update:modelValue', $event)"
-    />
+    <div class="flex items-center gap-2">
+      <ColorPicker
+        :model-value="modelValue?.replace('#', '')"
+        format="hex"
+        @update:model-value="emit('update:modelValue', $event ? `#${$event}` : '')"
+      />
+      <span class="text-sm text-surface-600 dark:text-surface-400">
+        {{ modelValue || 'None' }}
+      </span>
+    </div>
   </div>
 </template>

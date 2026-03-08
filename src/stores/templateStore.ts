@@ -50,7 +50,9 @@ export const useTemplateStore = defineStore("templates", () => {
   }
 
   async function update(id: string, changes: Partial<DocTemplate>) {
-    await db.templates.update(id, { ...changes, updatedAt: Date.now() });
+    // Strip Vue reactive proxies - IndexedDB cannot clone them
+    const plain = JSON.parse(JSON.stringify(changes));
+    await db.templates.update(id, { ...plain, updatedAt: Date.now() });
     await loadAll();
   }
 

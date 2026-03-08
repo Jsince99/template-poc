@@ -4,7 +4,7 @@ import AddressBlockRenderer from "./AddressBlockRenderer.vue";
 
 defineProps<{
   block: AddressPairBlock;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
 }>();
 
 const ratioMap = {
