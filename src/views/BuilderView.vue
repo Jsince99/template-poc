@@ -328,7 +328,7 @@ watch(
       <div class="canvas-panel flex-1 min-w-0 overflow-auto p-4 bg-surface-100 dark:bg-surface-900">
         <!-- A4 width (210mm) so canvas matches PDF output -->
         <div class="canvas-inner mx-auto" style="width: 210mm;">
-          <div class="canvas-paper bg-white rounded-lg shadow-sm min-h-[297mm] relative" style="padding: 20mm;">
+          <div class="canvas-paper rounded-lg shadow-sm min-h-[297mm] relative" style="padding: 20mm; background: #fff; color: #1a1a1a; color-scheme: light;">
             <Sortable
               :list="template.blocks"
               item-key="id"

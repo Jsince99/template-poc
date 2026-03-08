@@ -133,7 +133,7 @@ function onChildRemove(id: string) {
             @click="onRemove"
           />
         </div>
-        <div class="block-preview">
+        <div class="block-preview" style="color: #1a1a1a; color-scheme: light;">
           <BlockRenderer
             :block="block"
             :data="sampleData"
@@ -197,7 +197,7 @@ function onChildRemove(id: string) {
 }
 
 .dark .builder-block--selected {
-  background-color: rgba(59, 130, 246, 0.15);
+  background-color: rgba(59, 130, 246, 0.08);
 }
 
 .builder-block--container.builder-block--unselected {
